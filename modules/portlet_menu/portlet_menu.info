@@ -1,0 +1,6 @@
+name = Portlet menu
+description = Defines menu portlet type.
+dependencies[] = portlet
+dependencies[] = menu
+package = Portlet
+core = 6.x

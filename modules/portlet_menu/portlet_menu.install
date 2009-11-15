@@ -1,0 +1,13 @@
+<?php
+function portlet_menu_install() {
+  $types = variable_get('portlet_types', array());
+  $types['menu'] = 'menu';
+  variable_set('portlet_types', $types);
+}
+
+function portlet_menu_uninstall() {
+  $types = variable_get('portlet_types', array());
+  unset($types['menu']);
+  variable_set('portlet_types', $types);
+}
+?>

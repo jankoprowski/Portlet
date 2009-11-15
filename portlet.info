@@ -1,0 +1,5 @@
+name = Portlet
+description = "Show site with configurable portlets"
+core = 6.x
+package = Portlet
+dependencies[] = jquery_ui

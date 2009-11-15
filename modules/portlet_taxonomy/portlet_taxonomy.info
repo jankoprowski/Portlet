@@ -1,0 +1,6 @@
+name = Portlet taxonomy
+description = Defines taxonomy portlet type.
+dependencies[] = portlet
+dependencies[] = taxonomy
+package = Portlet
+core = 6.x

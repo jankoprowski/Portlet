@@ -1,0 +1,13 @@
+<?php
+function portlet_taxonomy_install() {
+  $types = variable_get('portlet_types', array());
+  $types['taxonomy'] = 'taxonomy';
+  variable_set('portlet_types', $types);
+}
+
+function portlet_taxonomy_uninstall() {
+  $types = variable_get('portlet_types', array());
+  unset($types['taxonomy']);
+  variable_set('portlet_types', $types);
+}
+?>

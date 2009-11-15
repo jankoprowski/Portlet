@@ -1,0 +1,26 @@
+<?php
+function portlet_menu_options() {
+  $options = array();
+
+  // Take alphabetical all taxonomies in system
+  $result = db_query('SELECT menu_name, title FROM {menu_custom} WHERE menu_name NOT IN (SELECT arg FROM {portlet_config} WHERE type="menu") ORDER BY title;');
+  while ($menu = db_fetch_array($result)) {
+      $options['menu:'. $menu['menu_name']] = $menu['title'];
+  }
+  return array('Menu' => $options);
+}
+
+function theme_portlet_menu($pid, $name, $count, $state, $countable) {
+  $menu = menu_load($name);
+  $title = $menu['title'];
+  $content = menu_tree($name);
+  return theme('portlet', $pid, $title, $content, $state, $countable);
+}
+
+function portlet_menu_theme() {
+  $items['portlet_menu'] = array(
+    'arguments' => array()
+  );
+  return $items;
+}
+?>

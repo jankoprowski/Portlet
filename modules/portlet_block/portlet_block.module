@@ -1,0 +1,39 @@
+<?php
+function portlet_block_options() {
+  global $theme_key;
+
+  $args = array();
+  $options = array();
+
+  $result = db_query('SELECT arg FROM {portlet_config} WHERE type="block";');
+  while ($arg = db_fetch_array($result)) {
+      $args[] = $arg['arg'];
+  }
+
+  $result = db_query('SELECT bid, info FROM {boxes};');
+
+  $blocks = block_list($region);
+  foreach ($blocks as $block) {
+    if(! in_array($block->bid, $args)) {
+        $options['block:'.$block->bid] = $block->info;
+    }
+  }
+
+  return array('Block' => $options);
+}
+
+function theme_portlet_block($pid, $bid, $count, $state, $countable) {
+  $block = db_fetch_array(db_query('SELECT bl.title, bx.body, bx.format FROM {boxes} AS bx JOIN {blocks} AS bl ON bx.bid = bl.delta AND bl.bid=%d', $bid));
+  $title = $block['title'];
+  $content = check_markup($block['body'], $block['format'], FALSE);
+  $theme = ($block['title']) ? 'portlet' : 'portlet_empty';
+  return theme($theme, $pid, $title, $content, $state, $countable);
+}
+
+function portlet_block_theme() {
+  $items['portlet_block'] = array(
+    'arguments' => array()
+  );
+  return $items;
+}
+?>

@@ -1,0 +1,81 @@
+div#portlet-left-column {
+  float: left;
+  clear: left;
+  width: 100px;
+}
+
+div#portlet-center-column {
+  float: left;
+  width: 300px;
+}
+
+div#portlet-right-column {
+  float: left;
+  clear: none;
+  width: 200px;
+}
+
+div.portlet-column {
+  min-height: 100px;
+  height: auto;
+  
+  margin-right: 10px;
+  border: 1px solid blue;
+}
+
+.portlet-panel {
+  width: 100%;
+
+  margin-top: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  margin-bottom: 10px;
+}
+
+.portlet-panel-title {
+  width: 100%;
+  height: 21px;
+  
+  background-color: blue;
+  
+  border: 0px;
+
+  font-weight: bold;
+}
+
+.portlet-panel-content {
+  width: 100%;
+}
+
+.handler {
+  cursor: move;
+}
+
+div#portlet-categories-menu {
+  display: hidden;
+}
+
+fieldset.portlet-category-frame {
+  width: 200px;
+  float: left;
+  overflow: hidden;
+}
+
+div#portlet-link-menu {
+  clear: both;
+}
+
+.portlet-visible {
+  display: block;
+}
+
+.portlet-invisible {
+  display: none;
+}
+
+button.portlet-button {
+  display: block;
+  clear: both;
+}
+
+.ui-sortable-placeholder { border: 4px dashed blue; visibility: visible !important; }

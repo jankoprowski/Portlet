@@ -1,0 +1,24 @@
+div#portlet-admin-containers {
+  width: 500px;
+
+  float: right;
+}
+
+div#portlet-admin-portlets {
+  width: 140px;
+
+  float: left;
+}
+
+form#portlet-container {
+  clear: both;
+}
+
+span.portlet-admin-thumb {
+  display: block;
+  background-color: blue;
+  margin: 2px 2px 2px 2px;
+  color: #FFFFFF;
+  font-weight: bold;
+  width: 140px;
+}

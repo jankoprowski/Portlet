@@ -1,0 +1,13 @@
+<?php
+function portlet_block_install() {
+  $types = variable_get('portlet_types', array());
+  $types['block'] = 'block';
+  variable_set('portlet_types', $types);
+}
+
+function portlet_block_uninstall() {
+  $types = variable_get('portlet_types', array());
+  unset($types['block']);
+  variable_set('portlet_types', $types);
+}
+?>

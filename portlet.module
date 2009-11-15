@@ -1,0 +1,710 @@
+<?php
+/**
+ * Implementation of hook_help().
+ */
+function portlet_help($path, $arg) {
+}
+
+/**
+ * Return form to setup portlets on main page
+ */
+function portlet_setup($form_state) {
+  $form = array();
+  $form['categories'] = array(
+      '#tree' => TRUE
+  );
+
+  $portlets = portlet_get_tree();
+  //echo '<pre>';
+  //print_r($portlets);
+  //echo '</pre>';
+  foreach ($portlets as $portlet) {
+    // Add not empty categories as fieldset
+    if ($portlet->type == 'root' AND ! empty($portlet->children)) {
+      $form['categories']['category-'.$portlet->pid] = array(
+        '#type' => 'fieldset',
+        '#title' => $portlet->title,
+        '#weight' => $portlet->weight,
+        '#attributes' => array('class' => 'portlet-category-frame')
+      );
+    // Other portlets with parent as checkboxes
+    } elseif ($portlet->parent != 0) {
+      // Portlets out of the categories should not be considered       
+      $attributes = !is_null($portlet->column) ? array('checked' => 'checked') : array();
+      $attributes['class'] = 'portlet-checkbox '.$class;
+      $form['categories']['category-'.$portlet->parent]['#parent'] = TRUE;
+      $form['categories']['category-'.$portlet->parent]['panel-'.$portlet->pid] = array(
+        '#id' => 'portlet-'.$portlet->pid.'-checkbox',
+        '#type' => 'checkbox',
+        '#return_value' => $portlet->pid,
+        '#title' => $portlet->title,
+        '#weight' => $portlet->weight,
+        '#attributes' => $attributes
+      );
+    }
+  }
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+  return $form;
+}
+
+function portlet_setup_submit($form, &$form_state) {
+  global $user;
+
+  $portlets = portlet_get_all('c._column, c._order');
+  $oid = ($user->uid) ? $user->uid : $_COOKIE['cid'];
+
+  if ($user->uid) {
+    $insert = 'INSERT INTO {portlet_users} (oid, _column, pid, _order) VALUES (%d, "center", %d, 9999)';
+    $delete = 'DELETE FROM {portlet_users} WHERE oid=%d AND pid=%d;';
+  } else {
+    $insert = 'INSERT INTO {portlet_guests} (oid, _column, pid, _order) VALUES ("%s", "center", %d, 9999)';
+    $delete = 'DELETE FROM {portlet_guests} WHERE oid="%s" AND pid=%d;';
+  }
+
+  foreach ($form_state['values']['categories'] as $portlet) {
+    foreach ($portlet as $name => $checked) {
+      list($foo, $pid) = explode('-', $name);
+      // If not in column but checked - insert
+      if (is_null($portlets[$pid]->column) and $checked) {        
+        db_query($insert, $oid, $pid, $pid, $oid);
+      }
+      // If in column but unchecked - delete
+      elseif (! is_null($portlets[$pid]->column) and ! $checked) {        
+        db_query($delete, $oid, $pid);
+      }
+    }
+  }
+}
+
+
+/**
+ * Implementation of hook_perm
+ */
+function portlet_perm() {
+  return array('administer panels');
+}
+
+/**
+ * Return standard panels theme
+ */
+function theme_portlet($pid, $title, $content, $state, $countable) {
+  $display = ($state == 'minimized') ? 'portlet-invisible' : 'portlet-visible';
+
+  $output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js">';
+  $output .= '<div id="portlet-'.$pid.'-bar" class="portlet-panel-title portlet-handler-js">';
+  $output .= '<a href="'.url('taxonomy/term/'.$pid).'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a>';
+  // @think - how make available + or - depending on count of available elements
+  if ($countable) {
+    $output .= '&nbsp;';
+    $output .= '<a class="portlet-countup portlet-option-element-js" href="'.url('portlet/update/'.$pid.'/'.(int)($count + 1)).'">+</a>';
+    $output .= '&nbsp;';
+    $output .= '<a class="portlet-countdown portlet-option-element-js"  href="'.url('portlet/update/'.$pid.'/'.(int)($count - 1)).'">-</a>';
+    $output .= '&nbsp;';
+  }
+  // @fixit: switch to constants (numerical values)
+  list($action, $icon) = ($state == 'minimized') ? array('maximize', 'M') : array('minimize', 'm');
+  $output .= '&nbsp;';
+  $output .= '[<a class="portlet-resize portlet-option-element-js"  href="'.url('portlet/'.$action.'/'.$pid).'">'.$icon.'</a>]';
+  $output .= '&nbsp;';
+  $output .= '[<a class="portlet-close portlet-option-element-js"  href="'.url('portlet/remove/'.$pid).'">x</a>]';
+  $output .= '</div>';
+  $output .= '<div id="portlet-'.$pid.'-content" class="portlet-panel-content '.$display.'">'.$content.'</div>';
+  $output .= '</div>';
+  return $output;
+}
+
+function theme_portlet_empty($pid, $title, $content, $state, $countable) {
+  $output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js">';
+  $output .= '<div id="portlet-'.$pid.'-content" class="portlet-panel-content portlet-handler-js">'.$content.'</div>';
+  $output .= '</div>';
+  return $output;
+}
+
+/**
+ * Forbidd access if user not identificate
+ */
+function portlet_check_access() {
+  global $user;
+
+  if (! isset($_COOKIE['cid']) AND ! $user->uid) {
+    drupal_access_denied();
+  }
+}
+
+/**
+ * Load portlet container
+ */
+function portlet_container_load($title) {
+  $container = new stdClass();
+  $container->title = $title;
+  return $container;
+}
+
+/**
+ * Save configuration of panels to database.
+ */
+function portlet_save_ajax() {
+  global $user;
+  portlet_check_access();
+
+  $columns = array(
+    'left' => array(),
+    'center' => array(),
+    'right' => array()
+  );
+
+  portlet_clear();
+  if ($user->uid) {
+    $query = 'INSERT INTO {portlet_users} (oid, _column, pid, _order) VALUES (%d, "%s", %d, %d)';
+  } else {
+    $query = 'INSERT INTO {portlet_guests} (oid, _column, pid, _order) VALUES ("%s", "%s", %d, %d)';
+  }
+
+  // Set owner panel id on is logged user or guest
+  $oid = ($user->uid) ? $user->uid : $_COOKIE['cid'];
+
+  $saved = TRUE;
+  foreach ($_POST as $column => $content) {
+    if ($content) {
+      $portlets = explode(',', $content);
+      $sequence_number = count($portlets);
+      foreach ($portlets as $portlet) {
+        list($foo, $pid) = explode('-', $portlet);
+        $saved &= db_query($query, $oid, $column, $pid, $sequence_number);
+        $sequence_number--;
+      }
+    }
+  }
+
+  if (! $saved) {
+    drupal_access_denied();
+  }
+}
+
+/**
+ * Reset panels configurations
+ */
+function portlet_clear() {
+  global $user;
+
+  if ($user->uid) {
+    db_query('DELETE FROM {portlet_users} WHERE oid="%d"', (int)$user->uid);
+  } else {
+    db_query('DELETE FROM {portlet_guests} WHERE oid="%s"', $_COOKIE['cid']);
+  }
+}
+
+/**
+ * Site to reset panels configuration
+ */
+function portlet_reset() {
+  portlet_clear();
+  portlet_load_default_configuration();
+  drupal_set_message('Ustawienia paneli zostaly zresetowane do wartolci domyslnych');
+  header('Location: '. url('portlet'));
+}
+
+/**
+ * Return default configuration of panels
+ */
+function portlet_load_default_configuration() {
+  global $user;
+
+  $columns = array();
+  $portlets = portlet_get_all();
+
+  if ($user->uid) {
+    db_query('INSERT INTO {portlet_users} (oid, pid, _column, count, state, _order) VALUES
+      (%d, 2, "left", 5, "maximized", 1),
+      (%d, 3, "center", 5, "maximized", 2),
+      (%d, 4, "right", 5, "maximized", 1);', $user->uid, $user->uid, $user->uid);
+  } else {
+    db_query('INSERT INTO {portlet_guests} (oid, pid, _column, count, state, _order) VALUES
+      ("%s", 2, "left", 5, "maximized", 1),
+      ("%s", 3, "center", 5, "maximized", 2),
+      ("%s", 4, "right", 5, "maximized", 1);', $_COOKIE['cid'], $_COOKIE['cid'], $_COOKIE['cid']);
+  }
+
+  $columns['left'] = array(
+    $portlets[2]
+  );
+  $columns['center'] = array(
+    $portlets[3]
+  );
+  $columns['right'] = array(
+    $portlets[4]
+  );
+
+  return $columns;
+}
+
+/**
+ * Return all portlets in database
+ *
+ * @param string - list of fileds
+ *   for which portlets should be ordered
+ * @return array of portlets
+ */
+function portlet_get_all($order = NULL) {
+  static $portlets;
+  global $user;
+
+  if ($order) {
+    $order = 'ORDER BY '.$order.' DESC';
+  }
+  
+  if (empty($portlets[$order])) {
+    if ($user->uid) {
+        $result = db_query('SELECT
+            p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
+          FROM
+            {portlet_config} AS p
+          LEFT OUTER JOIN
+            {portlet_users} AS c
+          ON
+            p.pid = c.pid
+          WHERE
+            (c.oid=%d OR c.pid IS NULL)
+          '.$order,
+        $user->uid);
+    } else {
+        $result = db_query('SELECT
+            p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
+          FROM
+            {portlet_config} AS p
+          LEFT OUTER JOIN
+            {portlet_guests} AS c
+          ON
+            p.pid = c.pid
+          WHERE
+            (c.oid="%s" OR c.pid IS NULL)
+          '.$order,
+        $_COOKIE['cid']);
+    }
+    while ($portlet = db_fetch_object($result)) {
+      $portlets[$order][$portlet->pid] = $portlet;
+    }
+  }
+
+  return $portlets[$order];
+}
+
+/**
+ * Return portlets tree puting portlets in their categories
+ *
+ * @param int parent of portlets to return
+ * @return array been portlets tree
+ */
+function portlet_get_tree($parent = 0) {
+  static $children, $parents;
+  global $user;
+
+  // @fixit hmac instead two table
+  $portlets = portlet_get_all('p.weight, p.title');
+  if (! isset($children)) {
+    $children = array();
+    foreach ($portlets as $portlet) {
+      $children[$portlet->parent][] = $portlet->pid;
+      $parents[$portlet->pid][] = $portlet->parent;
+    }
+  }
+
+  $tree = array();
+  if (! empty($children[$parent])) {
+    foreach ($children[$parent] as $child) {
+      $portlet = drupal_clone($portlets[$child]);
+      $portlet->children = $children[$child];
+      $tree[] = $portlet;
+      if (! empty($children[$child])) {
+        $tree = array_merge($tree, portlet_get_tree($child));
+      }
+    }
+  }
+  return $tree;
+}
+
+/**
+ * Get portlets and choose
+ *
+ * @return array Portlets in user defined order
+ */
+function portlet_get_columns() {
+  $columns = array();
+  $portlets = portlet_get_all('c._column, c._order');
+  foreach ($portlets as $portlet) {
+    if ($portlet->column) {
+      $columns[$portlet->column][] = $portlet;
+    }
+  }
+  return $columns;
+}
+
+/**
+ * Set cookie of fluid panels
+ */
+function portlet_set_cookie() {
+  setcookie('cid', isset($_COOKIE['cid']) ? $_COOKIE['cid'] : uniqid('mx', TRUE), time() + 3600 * 24 * 7 * 4 * 6 , '/');
+  db_query('UPDATE {portlet_guests} SET period=NOW() WHERE oid="%s";', $_COOKIE['cid']);
+}
+
+/**
+ * Return main site - view of the panels.
+ */
+function portlet() {
+  global $user;
+
+  if (! $user->uid) { portlet_set_cookie(); }
+
+  drupal_add_css(drupal_get_path('module', 'portlet') . '/portlet.css');
+  jquery_ui_add('ui.sortable');
+  jquery_ui_add('ui.accordion');
+  drupal_add_js(drupal_get_path('module', 'portlet') .'/portlet.js');
+
+
+  $columns = portlet_get_columns();
+  //echo '<pre>';
+  //print_r($columns);
+  //echo '</pre>';
+  if (empty($columns) AND ! $user->uid) { $columns = portlet_load_default_configuration();}
+
+  return theme('portlet_page', $columns);
+}
+
+/**
+ * Set new count for database panel
+ */
+function portlet_set_count($pid, $count) {
+  global $user;
+
+  if ($user->uid) {
+    $result = db_query('UPDATE {portlet_users} SET count=%d WHERE oid=%d AND pid=%d', $count, $user->uid, $pid);
+  } else {
+    $result = db_query('UPDATE {portlet_guests} SET count=%d WHERE oid=%d AND pid=%d', $count, $_COOKIE['cid'], $pid);
+  }
+
+  return $result;
+}
+
+/**
+ * Update count filed panel
+ */
+function portlet_update_page($pid, $count) {
+  portlet_check_access();
+
+  $result = portlet_set_count($pid, $count);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+  header('Location: '. url('portlet'));
+}
+
+/**
+ * Return json elements to update in panel
+ */
+function portlet_update_ajax($pid, $count) {
+  portlet_check_access();
+
+  $result = portlet_set_count($pid, $count);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+
+  $to_update = array(
+    'content' => call_user_func_array('portlet_'.$type.'_content', array($pid, $count)),
+    'countdown' => url('portlet/update/'.$type.'/'.$arg.'/'.(int)($count - 1)),
+    'countup' => url('portlet/update/'.$type.'/'.$arg.'/'.(int)($count + 1))
+  );
+
+  echo json_encode($to_update);
+  exit;
+}
+
+
+
+/**
+ * Miminimize panel in DB
+ */
+function portlet_minimize_db($pid) {
+  global $user;
+
+  if ($user->uid) {
+    $result = db_query('UPDATE {portlet_users} SET state="minimized" WHERE oid=%d AND pid=%d', $user->uid, $pid);
+  } else {
+    $result = db_query('UPDATE {portlet_guests} SET state="minimized" WHERE oid=%d AND pid=%d', $_COOKIE['cid'], $pid);
+  }
+
+  return $result;
+}
+
+/**
+ * Handle minimization
+ */
+function portlet_minimize($pid) {
+  portlet_check_access();
+
+  $result =  portlet_minimize_db($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+  header('Location: '. url('portlet'));
+}
+
+function portlet_minimize_ajax($pid) {
+  portlet_check_access();
+
+  $result =  portlet_minimize_db($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+
+  $to_update = array(
+    'url' => url('portlet/maximize/'.$pid)
+  );
+
+  echo json_encode($to_update);
+  exit;
+}
+
+/**
+ * Maximize panel in DB
+ */
+function portlet_maximize_db($pid) {
+  global $user;
+
+  if ($user->uid) {
+    $result = db_query('UPDATE {portlet_users} SET state="maximized" WHERE oid=%d AND pid=%d', $user->uid, $pid);
+  } else {
+    $result = db_query('UPDATE {portlet_guests} SET state="maximized" WHERE oid=%d AND pid=%d', $_COOKIE['cid'], $pid);
+  }
+
+  return $result;
+}
+
+
+/**
+ * Handle minimization
+ */
+function portlet_maximize($pid) {
+  portlet_check_access();
+
+  $result =  portlet_maximize_db($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+  header('Location: '. url('portlet'));
+}
+
+function portlet_maximize_ajax($pid) {
+  portlet_check_access();
+
+  $result =  portlet_maximize_db($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+
+  $to_update = array(
+    'url' => url('portlet/minimize/'.$pid)
+  );
+
+  echo json_encode($to_update);
+  exit;
+}
+
+/**
+ * Remove portlet from database
+ */
+function portlet_remove($pid) {
+  global $user;
+
+  if ($user->uid) {
+    $result = db_query('DELETE FROM {portlet_users}  WHERE oid=%d AND pid=%d', $user->uid, $pid);
+  } else {
+    $result = db_query('DELETE FROM {portlet_guests}  WHERE oid="%s" AND pid=%d', $_COOKIE['cid'], $pid);
+  }
+
+  return $result;
+}
+
+/**
+ * Return parent of panels
+ */
+function portlet_get_parent($pid) {
+  return db_result(db_query('SELECT parent FROM {portlet_config} WHERE pid=%d;', $pid));
+}
+
+/**
+ * Delete panel from column
+ */
+function portlet_delete($pid) {
+  portlet_check_access();
+
+  $result =  portlet_remove($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+  header('Location: '. url('portlet'));
+}
+
+
+/**
+ * Delete panel from column
+ */
+function portlet_delete_ajax($pid) {
+  portlet_check_access();
+
+  $result =  portlet_remove($pid);
+
+  if (! $result) {
+    drupal_access_denied();
+  }
+
+  $category =  portlet_get_parent($pid);
+  $to_update = array(
+    'category' => $category
+  );
+
+  echo json_encode($to_update);
+  exit;
+}
+
+/**
+ * Implemetation of hook_menu().
+ */
+function portlet_menu() {
+  $items['portlet'] = array(
+    'title' => 'Strona glowna',
+    'page callback' => 'portlet',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['admin/build/portlet'] = array(
+    'title' => 'Portlets',
+    'description' => t('Setup set of available portlets and choose default configuration.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('portlet_admin_form'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'portlet.admin.inc'
+  );
+  $items['admin/build/portlet/order'] = array(
+    'title' => 'Order',
+    'type' => MENU_DEFAULT_LOCAL_TASK
+  );
+  $items['admin/build/portlet/default'] = array(
+    'title' => 'Default',
+    'page callback' => 'portlet_default',
+    'page arguments' => array(),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'portlet.admin.inc'
+  );
+  $items['portlet/container/edit/%portlet_container'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('portlet_container', 3),
+    'access callback' => TRUE,
+    'file' => 'portlet.admin.inc',
+    'type' => MENU_CALLBACK
+  );
+  // @todo methods only form admin
+  $items['admin/build/portlet/container/update'] = array(
+    'page callback' => 'portlet_update_in_default',
+    'page arguments' => array(),
+    'access callback' => TRUE,
+    'file' => 'portlet.admin.inc',
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/save/ajax'] = array(
+    'page callback' => 'portlet_save_ajax',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/reset'] = array(
+    'page callback' => 'portlet_reset',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/update/%/%'] = array(
+    'page callback' => 'portlet_update_page',
+    'page arguments' => array(2,3),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/update/%/%/ajax'] = array(
+    'page callback' => 'portlet_update_ajax',
+    'page arguments' => array(2,3),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/remove/%'] = array(
+    'page callback' => 'portlet_delete',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/remove/%/ajax'] = array(
+    'page callback' => 'portlet_delete_ajax',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/maximize/%'] = array(
+    'page callback' => 'portlet_maximize',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/maximize/%/ajax'] = array(
+    'page callback' => 'portlet_maximize_ajax',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/minimize/%'] = array(
+    'page callback' => 'portlet_minimize',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['portlet/minimize/%/ajax'] = array(
+    'page callback' => 'portlet_minimize_ajax',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function portlet_theme() {
+  $items['portlet_empty'] = array(
+    'arguments' => array()
+  );
+  $items['portlet_page'] = array(
+    'arguments' => array('columns' => NULL),
+    'template' => 'portlet'
+  );
+  $items['portlet_admin'] = array(
+    'template' => 'admin'
+  );
+  $items['portlet'] = array(
+    'arguments' => array()
+  );
+  $items['portlet_admin_form'] = array(
+    'arguments' => array($form => NULL)
+  );
+  $items['portlet_default'] = array(
+    'arguments' => array('default' => NULL, 'portlets' => NULL),
+    'template' => 'default'
+  );
+  return $items;
+}
+?>

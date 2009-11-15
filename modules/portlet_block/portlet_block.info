@@ -1,0 +1,6 @@
+name = Portlet block
+description = Defines block portlet type.
+dependencies[] = portlet
+dependencies[] = block
+package = Portlet
+core = 6.x

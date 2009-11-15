@@ -1,0 +1,51 @@
+<?php
+function portlet_taxonomy_options() {
+  $options = array();
+
+  // Take alphabetical all taxonomies in system
+  $result = db_query('SELECT tid, name FROM {term_data} WHERE tid NOT IN (SELECT arg FROM {portlet_config} WHERE type="taxonomy") ORDER BY name;');
+  while ($term = db_fetch_array($result)) {
+      $options['term:'.$term['tid']] = $term['name'];
+  }
+  return array('Taxonomy' => $options);
+}
+
+function portlet_taxonomy_title($tid) {
+  $term = db_fetch_object(db_query('SELECT name FROM {term_data} WHERE tid=%d', $tid));
+  return $term->name;
+}
+
+function portlet_taxonomy_content($tid, $count) {
+  $i = 0;
+  $output = '<ul class="portlet-node-list">';
+  $tids = array($tid);
+  $result = taxonomy_select_nodes($tids);
+  while (($node = db_fetch_object($result)) AND ($i < $count)) {
+    $node = node_build_content(node_load($node->nid));
+    $output .= '<li>';
+    $output .= '<a href="'.url('node/'.$node->nid).'" class="portlet-node-title"><h4>'.$node->title.'</h4></a>';
+    $output .= '<p>';
+    if ($node->thumbnail) {
+      $output .= theme('image', $node->thumbnail, $node->thumbnail, $node->thumbnail);
+    }
+    $output .strip_tags($node->teaser).'</p>';
+    $output .= '</li>';
+    $i++;
+  }
+  $output .= '</ul>';
+  return $output;
+}
+
+function theme_portlet_taxonomy($pid, $tid, $count, $state, $countable) {
+  $title = portlet_taxonomy_title($tid);
+  $content = portlet_taxonomy_content($tid, $count);
+  return theme('portlet', $pid, $title, $content, $state, $countable);
+}
+
+function portlet_taxonomy_theme() {
+  $items['portlet_taxonomy'] = array(
+    'arguments' => array()
+  );
+  return $items;
+}
+?>
