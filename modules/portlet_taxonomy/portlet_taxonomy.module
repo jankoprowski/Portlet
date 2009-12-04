@@ -3,16 +3,16 @@ function portlet_taxonomy_options() {
   $options = array();
 
   // Take alphabetical all taxonomies in system
-  $result = db_query('SELECT tid, name FROM {term_data} WHERE tid NOT IN (SELECT arg FROM {portlet_config} WHERE type="taxonomy") ORDER BY name;');
+  $result = db_query('SELECT tid, name FROM {term_data} ORDER BY name;');
   while ($term = db_fetch_array($result)) {
-      $options['term:'.$term['tid']] = $term['name'];
+      $options['taxonomy:'.$term['tid']] = $term['name'];
   }
   return array('Taxonomy' => $options);
 }
 
-function portlet_taxonomy_title($tid) {
-  $term = db_fetch_object(db_query('SELECT name FROM {term_data} WHERE tid=%d', $tid));
-  return $term->name;
+function portlet_taxonomy_count($pid) {
+  $data = db_fetch_array(db_query('SELECT COUNT(tn.tid) AS quantity FROM {term_node} AS tn RIGHT JOIN {portlet_config} AS pc ON tn.tid = pc.arg WHERE pc.pid = %d', $pid));
+  return $data['quantity'];
 }
 
 function portlet_taxonomy_content($tid, $count) {
@@ -36,10 +36,9 @@ function portlet_taxonomy_content($tid, $count) {
   return $output;
 }
 
-function theme_portlet_taxonomy($pid, $tid, $count, $state, $countable) {
-  $title = portlet_taxonomy_title($tid);
+function theme_portlet_taxonomy($pid, $title, $tid, $count, $state, $countable) {
   $content = portlet_taxonomy_content($tid, $count);
-  return theme('portlet', $pid, $title, $content, $state, $countable);
+  return theme('portlet', $pid, $title, $content, $state, $countable, 'taxonomy', $count);
 }
 
 function portlet_taxonomy_theme() {

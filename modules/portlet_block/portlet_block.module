@@ -1,7 +1,5 @@
 <?php
 function portlet_block_options() {
-  global $theme_key;
-
   $args = array();
   $options = array();
 
@@ -10,24 +8,22 @@ function portlet_block_options() {
       $args[] = $arg['arg'];
   }
 
-  $result = db_query('SELECT bid, info FROM {boxes};');
+  $result = db_query('SELECT boxes.bid AS bid, boxes.info AS info, blocks.title AS title FROM {boxes} LEFT JOIN {blocks} ON boxes.bid = blocks.delta WHERE blocks.module = "block";');
 
-  $blocks = block_list($region);
-  foreach ($blocks as $block) {
-    if(! in_array($block->bid, $args)) {
-        $options['block:'.$block->bid] = $block->info;
-    }
+  while ($block = db_fetch_object($result)) {
+    $options['block:'.$block->bid] = $block->title;
   }
 
   return array('Block' => $options);
 }
 
-function theme_portlet_block($pid, $bid, $count, $state, $countable) {
-  $block = db_fetch_array(db_query('SELECT bl.title, bx.body, bx.format FROM {boxes} AS bx JOIN {blocks} AS bl ON bx.bid = bl.delta AND bl.bid=%d', $bid));
-  $title = $block['title'];
+function theme_portlet_block($pid, $title, $bid, $count, $state, $countable) {
+  $block = db_fetch_array(db_query('SELECT bl.title, bx.body, bx.format FROM {boxes} AS bx LEFT JOIN {blocks} AS bl ON bx.bid = bl.delta WHERE bx.bid=%d AND bl.module = "block"', $bid));
+  // If block have title use title of portlet and normal portlet theme
+  // If haven't use empty_portlet theme
   $content = check_markup($block['body'], $block['format'], FALSE);
   $theme = ($block['title']) ? 'portlet' : 'portlet_empty';
-  return theme($theme, $pid, $title, $content, $state, $countable);
+  return theme($theme, $pid, $title, $content, $state, $countable, 'block', $count);
 }
 
 function portlet_block_theme() {

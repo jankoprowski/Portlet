@@ -14,9 +14,6 @@
 
 <div class="portlet-admin-js" id="portlet-tip">
 <?php foreach ($portlets as $portlet) {
-  if (isset($form_state['confirm_delete'])) {
-    return array_merge($form, taxonomy_term_confirm_delete($form_state, $edit['tid']));
-  }
 	if ($portlet->parent != 0) {
 		echo '<span id="portlet-default-'.(int)$portlet->pid.'" class="portlet-admin-thumb portlet-admin-'.(int)$portlet->pid.'">'.check_plain($portlet->title).'</span>';
 	}

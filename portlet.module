@@ -15,9 +15,6 @@ function portlet_setup($form_state) {
   );
 
   $portlets = portlet_get_tree();
-  //echo '<pre>';
-  //print_r($portlets);
-  //echo '</pre>';
   foreach ($portlets as $portlet) {
     // Add not empty categories as fieldset
     if ($portlet->type == 'root' AND ! empty($portlet->children)) {
@@ -81,13 +78,13 @@ function portlet_setup_submit($form, &$form_state) {
  * Implementation of hook_perm
  */
 function portlet_perm() {
-  return array('administer panels');
+  return array('administer portlet');
 }
 
 /**
  * Return standard panels theme
  */
-function theme_portlet($pid, $title, $content, $state, $countable) {
+function theme_portlet($pid, $title, $content, $state, $countable, $type, $count) {
   $display = ($state == 'minimized') ? 'portlet-invisible' : 'portlet-visible';
 
   $output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js">';
@@ -96,9 +93,9 @@ function theme_portlet($pid, $title, $content, $state, $countable) {
   // @think - how make available + or - depending on count of available elements
   if ($countable) {
     $output .= '&nbsp;';
-    $output .= '<a class="portlet-countup portlet-option-element-js" href="'.url('portlet/update/'.$pid.'/'.(int)($count + 1)).'">+</a>';
+    $output .= '<a class="portlet-countup portlet-option-element-js" href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count + 1)).'">+</a>';
     $output .= '&nbsp;';
-    $output .= '<a class="portlet-countdown portlet-option-element-js"  href="'.url('portlet/update/'.$pid.'/'.(int)($count - 1)).'">-</a>';
+    $output .= '<a class="portlet-countdown portlet-option-element-js"  href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count - 1)).'">-</a>';
     $output .= '&nbsp;';
   }
   // @fixit: switch to constants (numerical values)
@@ -113,7 +110,7 @@ function theme_portlet($pid, $title, $content, $state, $countable) {
   return $output;
 }
 
-function theme_portlet_empty($pid, $title, $content, $state, $countable) {
+function theme_portlet_empty($pid, $title, $content, $state, $countable, $type, $count) {
   $output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js">';
   $output .= '<div id="portlet-'.$pid.'-content" class="portlet-panel-content portlet-handler-js">'.$content.'</div>';
   $output .= '</div>';
@@ -205,6 +202,13 @@ function portlet_reset() {
 }
 
 /**
+ * Load portlet of the given ID
+ */
+function portlet_load($pid) {
+  return db_fetch_object(db_query('SELECT pid, title, parent, type, arg, countable FROM {portlet_config} WHERE pid = %d', $pid));
+}
+
+/**
  * Return default configuration of panels
  */
 function portlet_load_default_configuration() {
@@ -213,31 +217,26 @@ function portlet_load_default_configuration() {
   $columns = array();
   $portlets = portlet_get_all();
 
-  if ($user->uid) {
-    db_query('INSERT INTO {portlet_users} (oid, pid, _column, count, state, _order) VALUES
-      (%d, 2, "left", 5, "maximized", 1),
-      (%d, 3, "center", 5, "maximized", 2),
-      (%d, 4, "right", 5, "maximized", 1);', $user->uid, $user->uid, $user->uid);
-  } else {
-    db_query('INSERT INTO {portlet_guests} (oid, pid, _column, count, state, _order) VALUES
-      ("%s", 2, "left", 5, "maximized", 1),
-      ("%s", 3, "center", 5, "maximized", 2),
-      ("%s", 4, "right", 5, "maximized", 1);', $_COOKIE['cid'], $_COOKIE['cid'], $_COOKIE['cid']);
-  }
+  $args = array();
+  $default = variable_get('portlet_default', array());
 
-  $columns['left'] = array(
-    $portlets[2]
-  );
-  $columns['center'] = array(
-    $portlets[3]
-  );
-  $columns['right'] = array(
-    $portlets[4]
-  );
+  foreach ($default as $column => $_portlets) {
+    $columns[$column] = array();
+    $i = 0;
+    foreach ($_portlets as $pid) {
+      if ($user->uid) {
+        db_query('INSERT INTO {portlet_users} (oid, pid, _column, count, state, _order) VALUES (%d, %d, "%s", 5, "maximized", %d)', 
+          $user->uid, $pid, $column, $i);
+      } else {
+        db_query('INSERT INTO {portlet_guests} (oid, pid, _column, count, state, _order) VALUES ("%s", %d, "%s", 5, "maximized", %d)', $_COOKIE['cid'], $pid, $column, $i);
+      }
+      $columns[$column] = array_merge($columns[$column], array($portlets[$pid]));
+      $i++;
+    }
+  }
 
   return $columns;
 }
-
 /**
  * Return all portlets in database
  *
@@ -252,8 +251,8 @@ function portlet_get_all($order = NULL) {
   if ($order) {
     $order = 'ORDER BY '.$order.' DESC';
   }
-  
   if (empty($portlets[$order])) {
+    $portlets[$order] = array();
     if ($user->uid) {
         $result = db_query('SELECT
             p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
@@ -285,7 +284,6 @@ function portlet_get_all($order = NULL) {
       $portlets[$order][$portlet->pid] = $portlet;
     }
   }
-
   return $portlets[$order];
 }
 
@@ -362,9 +360,6 @@ function portlet() {
 
 
   $columns = portlet_get_columns();
-  //echo '<pre>';
-  //print_r($columns);
-  //echo '</pre>';
   if (empty($columns) AND ! $user->uid) { $columns = portlet_load_default_configuration();}
 
   return theme('portlet_page', $columns);
@@ -388,8 +383,13 @@ function portlet_set_count($pid, $count) {
 /**
  * Update count filed panel
  */
-function portlet_update_page($pid, $count) {
+function portlet_update_page($type, $pid, $count) {
   portlet_check_access();
+
+  // $type is unused variable add
+  // only for compatibility with portlet_update_ajax
+  // $type isn't necessery because link
+  // is generated by portlet_theme where type is known.
 
   $result = portlet_set_count($pid, $count);
 
@@ -402,7 +402,7 @@ function portlet_update_page($pid, $count) {
 /**
  * Return json elements to update in panel
  */
-function portlet_update_ajax($pid, $count) {
+function portlet_update_ajax($type, $pid, $count) {
   portlet_check_access();
 
   $result = portlet_set_count($pid, $count);
@@ -411,10 +411,24 @@ function portlet_update_ajax($pid, $count) {
     drupal_access_denied();
   }
 
+  $elements_quantity = call_user_func_array('portlet_'.$type.'_count', array($pid));
+  $up = $count + 1;
+  $down = $count - 1;
+  // Maximum allowed elements is number of elements in database
+  if ($up > $elements_quantity) {
+    $up = $elements_quantity;
+  }
+  // Minimum allowed elements is one
+  if ($down < 1) {
+    $down = 1;
+  }
+
+  $portlet = portlet_load($pid);
+
   $to_update = array(
-    'content' => call_user_func_array('portlet_'.$type.'_content', array($pid, $count)),
-    'countdown' => url('portlet/update/'.$type.'/'.$arg.'/'.(int)($count - 1)),
-    'countup' => url('portlet/update/'.$type.'/'.$arg.'/'.(int)($count + 1))
+    'content' => call_user_func_array('portlet_'.$type.'_content', array($portlet->arg, $count)),
+    'countdown' => url('portlet/update/'.$type.'/'.$pid.'/'.(int)($down)),
+    'countup' => url('portlet/update/'.$type.'/'.$pid.'/'.(int)($up))
   );
 
   echo json_encode($to_update);
@@ -589,34 +603,40 @@ function portlet_menu() {
     'description' => t('Setup set of available portlets and choose default configuration.'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('portlet_admin_form'),
-    'access callback' => TRUE,
-    'type' => MENU_NORMAL_ITEM,
-    'file' => 'portlet.admin.inc'
+    'access arguments' => array('administer portlet'),
+    'file' => 'portlet.admin.inc',
   );
   $items['admin/build/portlet/order'] = array(
     'title' => 'Order',
-    'type' => MENU_DEFAULT_LOCAL_TASK
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
   );
   $items['admin/build/portlet/default'] = array(
     'title' => 'Default',
     'page callback' => 'portlet_default',
     'page arguments' => array(),
-    'access callback' => TRUE,
+    'access arguments' => array('administer portlet'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'portlet.admin.inc'
   );
   $items['portlet/container/edit/%portlet_container'] = array(
     'page callback' => 'drupal_get_form',
     'page arguments' => array('portlet_container', 3),
-    'access callback' => TRUE,
+    'access arguments' => array('administer portlet'),
     'file' => 'portlet.admin.inc',
     'type' => MENU_CALLBACK
   );
-  // @todo methods only form admin
   $items['admin/build/portlet/container/update'] = array(
     'page callback' => 'portlet_update_in_default',
     'page arguments' => array(),
-    'access callback' => TRUE,
+    'access arguments' => array('administer portlet'),
+    'file' => 'portlet.admin.inc',
+    'type' => MENU_CALLBACK
+  );
+  $items['admin/build/portlet/edit/%portlet'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('portlet_edit_form', 4),
+    'access arguments' => array('administer portlet'),
     'file' => 'portlet.admin.inc',
     'type' => MENU_CALLBACK
   );
@@ -630,15 +650,15 @@ function portlet_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK
   );
-  $items['portlet/update/%/%'] = array(
+  $items['portlet/update/%/%/%'] = array(
     'page callback' => 'portlet_update_page',
-    'page arguments' => array(2,3),
+    'page arguments' => array(2,3,4),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK
   );
-  $items['portlet/update/%/%/ajax'] = array(
+  $items['portlet/update/%/%/%/ajax'] = array(
     'page callback' => 'portlet_update_ajax',
-    'page arguments' => array(2,3),
+    'page arguments' => array(2,3,4),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK
   );

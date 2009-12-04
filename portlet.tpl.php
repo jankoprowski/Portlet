@@ -10,7 +10,7 @@
 if (isset($columns['left'])):
   foreach ($columns['left'] as $portlet):
     extract((array)$portlet, EXTR_OVERWRITE);
-    echo theme('portlet_'.$type, $pid, $arg, $count, $state, $countable);
+    echo theme('portlet_'.$type, $pid, $title, $arg, $count, $state, $countable);
   endforeach;
 endif ?>
 </div>
@@ -20,7 +20,7 @@ endif ?>
 if (isset($columns['center'])):
   foreach ($columns['center'] as $portlet):
     extract((array)$portlet, EXTR_OVERWRITE);
-    echo theme('portlet_'.$type, $pid, $arg, $count, $state, $countable);
+    echo theme('portlet_'.$type, $pid, $title, $arg, $count, $state, $countable);
   endforeach;
 endif ?>
 </div>
@@ -30,7 +30,7 @@ endif ?>
 if (isset($columns['right'])):
   foreach ($columns['right'] as $portlet):
     extract((array)$portlet, EXTR_OVERWRITE);
-    echo theme('portlet_'.$type, $pid, $arg, $count, $state, $countable);
+    echo theme('portlet_'.$type, $pid, $title, $arg, $count, $state, $countable);
   endforeach;
 endif ?>
 </div>

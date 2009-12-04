@@ -17,15 +17,13 @@ Drupal.behaviors.portlet = function (context) {
     return false;
   });
   
-  /*
   function checkCheckbox(name) {
-    $(name).attr('checked', true).removeClass('portlet-checkbox-unchecked').addClass('portlet-checkbox-checked').parent().css('background', 'red');
+    $(name).attr('checked', true).removeClass('portlet-checkbox-unchecked').addClass('portlet-checkbox-checked');
   }
   
   function uncheckCheckbox(name) {
-    $(name).attr('checked', false).removeClass('portlet-checkbox-checked').addClass('portlet-checkbox-unchecked').parent().css('background', 'blue');
+    $(name).attr('checked', false).removeClass('portlet-checkbox-checked').addClass('portlet-checkbox-unchecked');
   }
-  */
   
   function savePanelsPosition() {
     // @todo Actualize only ui.item(id)
