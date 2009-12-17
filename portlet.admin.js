@@ -13,17 +13,17 @@ Drupal.behaviors.portlet = function (context) {
     var portlet = $(ui.item).attr('id');
     var new_container = $(ui.item).parent().attr('id');
     var old_container = $(this).attr('id');
+		old_container = getLastSector(old_container);
     portlet = getLastSector(portlet);
 		if (new_container == 'portlet-tip') {
-			old_container = getLastSector(old_container);
 			// @todo Add /AJAX
 			$.post('container/update', { old_container: old_container, portlet: portlet });
-		}
-		else {
+		} else {
 			// @todo Switch array sending to json
 			new_container = getLastSector(new_container);
 			var new_order = String($(ui.item).parent().sortable('toArray'));
-			$.post('container/update', { portlet: portlet, new_container: new_container, new_order: new_order });
+			// Pass also old container to remove from old place
+			$.post('container/update', { portlet: portlet, new_container: new_container, new_order: new_order, old_container: old_container });
 		}
   }
 

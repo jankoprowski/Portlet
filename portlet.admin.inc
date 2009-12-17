@@ -255,9 +255,9 @@ function portlet_default() {
 
 function portlet_update_in_default() {
   $types = variable_get('portlet_default', array());
-	$portlet = $_POST['portlet'];
 	// Remove portlet from old location
 	if (isset($_POST['old_container'])) {
+		$portlet = $_POST['portlet'];
 		$old_container = $_POST['old_container'];
 		$count = count($types);
 		// @todo make a function "remove_element"
