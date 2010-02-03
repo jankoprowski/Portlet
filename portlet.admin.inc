@@ -236,12 +236,14 @@ function portlet_admin_form_submit($form, &$form_state) {
 		}
 	}
 
-	 // Save new order of portlets
-	 // @todo Save only modified!
-	 foreach($form_state['values'] as $key => $portlet) {
-		db_query('UPDATE {portlet_config} SET parent=%d, weight=%d WHERE pid=%d;', $portlet['parent'], $portlet['weight'], $portlet['pid']);
-	 }
-	 drupal_set_message(t('Your panels configuration was saved.'));
+	// Save new order of portlets
+	// @todo Save only modified!
+	if ($form_state['values']['op'] == t('Save')) {
+		foreach($form_state['values'] as $key => $portlet) {
+			db_query('UPDATE {portlet_config} SET parent=%d, weight=%d WHERE pid=%d;', $portlet['parent'], $portlet['weight'], $portlet['pid']);
+		}
+		drupal_set_message(t('Your panels configuration was saved.'));
+	}
 }
 
 function portlet_default() {
