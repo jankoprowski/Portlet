@@ -11,7 +11,8 @@ function portlet_block_options() {
   $result = db_query('SELECT boxes.bid AS bid, boxes.info AS info, blocks.title AS title FROM {boxes} LEFT JOIN {blocks} ON boxes.bid = blocks.delta WHERE blocks.module = "block";');
 
   while ($block = db_fetch_object($result)) {
-    $options['block:'.$block->bid] = $block->title;
+		 $block_title = (! empty($block_title)) ? $block->title : $block->info;
+		 $options['block:'.$block->bid] = $block_title;
   }
 
   return array('Block' => $options);
