@@ -17,6 +17,8 @@ Drupal.behaviors.portlet = function (context) {
     return false;
   });
   
+	/*
+	 * kick ass checkboxes
   function checkCheckbox(name) {
     $(name).attr('checked', true).removeClass('portlet-checkbox-unchecked').addClass('portlet-checkbox-checked');
   }
@@ -24,6 +26,7 @@ Drupal.behaviors.portlet = function (context) {
   function uncheckCheckbox(name) {
     $(name).attr('checked', false).removeClass('portlet-checkbox-checked').addClass('portlet-checkbox-unchecked');
   }
+	*/
   
   function savePanelsPosition() {
     // @todo Actualize only ui.item(id)
@@ -35,27 +38,31 @@ Drupal.behaviors.portlet = function (context) {
   }
 
   function minimizePanel(panel) {
-    var url = $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href');
+    var url = $(panel).children('.portlet-panel-icons').children('.portlet-resize').attr('href');
     $.getJSON(url + '/ajax', function(data) {
-      $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href', data.url).html('M');
-      $(panel).children('.portlet-panel-content').slideUp('slow');
+      // @todo there is no two different icons for minimize and maximize
+      $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href', data.url);//.html('M');
+      $(panel).next('.portlet-panel-content').slideUp('slow');
     });
   }
 
   function maximizePanel(panel) {
-    var url = $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href');
+    var url = $(panel).children('.portlet-panel-icons').children('.portlet-resize').attr('href');
     $.getJSON(url + '/ajax', function(data) {
-      $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href', data.url).html('m');
-      $(panel).children('.portlet-panel-content').slideDown('slow');
+      // @todo there is no two different icons for minimize and maximize
+      $(panel).children('.portlet-panel-title').children('.portlet-resize').attr('href', data.url);//.html('m');
+      $(panel).next('.portlet-panel-content').slideDown('slow');
     });
   }
 
   function closePanel(panel) {
-    var url = $(panel).children('.portlet-panel-title').children('.portlet-close').attr('href');
+    var url = $(panel).children('.portlet-panel-header').children('.portlet-panel-icons').children('.portlet-close').attr('href');
     var checkbox = '#' + $(panel).attr('id') + '-checkbox';
     $.getJSON(url + '/ajax', function(data) {
       $(panel).slideUp('slow', function() {
-        uncheckCheckbox(checkbox);
+				// kick ass checkboxes still not implemented
+        //uncheckCheckbox(checkbox);
+				$(checkbox).attr('checked',false);
         $(panel).remove();
       });
     });
@@ -82,7 +89,7 @@ Drupal.behaviors.portlet = function (context) {
   $('.portlet-handler-js').css('cursor', 'move');
 
   $('a.portlet-close').click(function() {
-    var panel = $(this).parent().parent();
+    var panel = $(this).parent().parent().parent();
     closePanel(panel);
     return false;
   });
@@ -90,14 +97,16 @@ Drupal.behaviors.portlet = function (context) {
   /**
    * Handling for checkboxes
    * Parents should react on clicking
+	 * Handle for nice looking checkboxes
    */
+	/*
   $('.portlet-checkbox').parent().click(function () {
     if ($(this).hasClass('portlet-checkbox-checked')) {
       uncheckCheckbox(checkbox);
     } else {
       checkCheckbox(checkbox);
     }
-  });
+  });*/
 
   // Service +/- links by ajax
   $('a.portlet-countup').click(function () {
@@ -131,7 +140,7 @@ Drupal.behaviors.portlet = function (context) {
 
   $('a.portlet-resize').click(function () {
     panel = $(this).parent().parent();
-    if ($(panel).children('.portlet-panel-content').is(':visible')) {
+    if ($(panel).next('.portlet-panel-content').is(':visible')) {
       minimizePanel(panel);
     } else {
       maximizePanel(panel);

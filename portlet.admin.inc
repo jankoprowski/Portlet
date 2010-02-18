@@ -222,7 +222,7 @@ function portlet_admin_form_validate($form, &$form_state) {
 	}
 }
 
-function portlet_admin_form_submit($form, &$form_state) {
+function portlet_admin_form_submit($form, &$form_state) {    
 	if ($form_state['values']['op'] == t('Add')) {
 		$new =& $form_state['values']['new'];
 		if ($new['type']) {
@@ -231,19 +231,20 @@ function portlet_admin_form_submit($form, &$form_state) {
 				$new['arg'] = '';
 			} else {
 				list($new['type'], $new['arg']) = explode(':', $new['type']);
-			}      
+			}
+            //die(var_dump($new));			
 			db_query('INSERT INTO {portlet_config} (title, countable, arg, type, parent) VALUES ("%s", "%s", "%s", "%s", %d)', $new['title'], $new['countable'], $new['arg'], $new['type'], $new['parent']);
 		}
 	}
 
-	// Save new order of portlets
-	// @todo Save only modified!
-	if ($form_state['values']['op'] == t('Save')) {
-		foreach($form_state['values'] as $key => $portlet) {
+	 // Save new order of portlets
+	 // @todo Save only modified!
+	 if ($form_state['values']['op'] == t('Save')) {
+		 foreach($form_state['values'] as $key => $portlet) {
 			db_query('UPDATE {portlet_config} SET parent=%d, weight=%d WHERE pid=%d;', $portlet['parent'], $portlet['weight'], $portlet['pid']);
-		}
-		drupal_set_message(t('Your panels configuration was saved.'));
-	}
+		 }
+		 drupal_set_message(t('Your panels configuration was saved.'));
+	 }
 }
 
 function portlet_default() {
