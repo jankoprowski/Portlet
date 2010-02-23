@@ -1,18 +1,20 @@
 div#portlet-left-column {
+	margin-left: 0px;
   float: left;
   clear: left;
-  width: 212px;
+  width: 205px;
 }
 
 div#portlet-center-column {
   float: left;
-  width: 500px;
+  width: 490px;
 }
 
 div#portlet-right-column {
+	margin-right: 0px;
   float: left;
   clear: none;
-  width: 212px;
+  width: 205px;
 }
 
 div.portlet-column {
@@ -70,7 +72,7 @@ div.portlet-column {
 }
 
 .portlet-panel-title a {
-	color: white;
+	color: #FFFFFF !important;
 	text-decoration: none;
 }
 
@@ -79,7 +81,7 @@ div.portlet-column {
 	margin: 0px;
 	margin-right: 17px;
 	padding: 0px;
-	padding-top: 11px;
+	padding-top: 10px;
 
 	height: 34px;
 	overflow: hidden;
@@ -91,13 +93,24 @@ div.portlet-column {
 	background-position: left top;
 }
 
+
 .portlet-panel-content-edge {
-	background-color: #fafafb;
 	background-image: url(images/box_4.png);
 	background-repeat: repeat-y;
 	background-position: left top;
 }
 
+.portlet-panel-content-edge > .portlet-panel-content-right {
+	padding: 0px 5px 0px 5px;
+	background-image: url(images/box_6.png);
+	background-repeat: repeat-y;
+	background-position: right top;
+}
+
+.portlet-node-element {
+	overflow: hidden;
+	padding-bottom: 10px;
+}
 
 .handler {
   cursor: move;
@@ -132,17 +145,6 @@ button.portlet-button {
 
   display: block;
   clear: both;
-}
-
-.portlet-panel-content > ul {
-
-	margin: 0px;
-	margin-left: 30px;
-	padding: 0px;
-
-	background-image: url(images/box_6.png);
-	background-repeat: repeat-y;
-	background-position: right top;
 }
 
 .portlet-panel-bottom {
@@ -186,54 +188,152 @@ button.portlet-button {
 	background-position: left bottom;
 }
 
-.portlet-panel-content > ul.menu > li:first {
-	background: none;
+.portlet-panel-content-inner {
+	background-color: #fafafb;
 }
 
-.portlet-panel-content > ul.menu > li:first > a {
-	background: none;
-}
-
-.portlet-panel-content ul.menu li {
-
+.portlet-panel-content-inner > ul {
 	border: 0px;
 	margin: 0px;
 	padding: 0px;
-	margin-right: 5px;
-
 }
 
-.portlet-panel-content ul.menu li.leaf {
-	background-image: url(images/separator.png);
-	background-repeat: no-repeat;
-	background-position: right top;
-}
-
-.portlet-panel-content ul.menu li.expanded {
-	background-image: url(images/separator.png);
-	background-repeat: no-repeat;
-	background-position: right top;
-}
-
-.portlet-panel-content ul.menu li a {
-
+.portlet-panel-content ul.zhr-menu li {
+	border: 0px;
 	margin: 0px;
-	margin-right: 17px;
+	padding: 5px 0px 10px 0px;
+
+	list-style: none;
+}
+
+
+.portlet-panel-content-inner ul.zhr-menu > li:first-child {
+	padding-top: 0px;
+	background-image: none;
+}
+
+.portlet-panel-content-inner ul.zhr-menu > li:first-child  > a {
+	padding-top: 0px;
+	background-image: none;
+}
+
+.portlet-panel-content ul.zhr-menu li a {
+
+	border: 0px;
+	margin: 0px;
+	margin-right: 10px;
 	padding: 0px;
-	padding-top: 5px;
+	padding-left: 8px;
 
 	color: #005A26;
 	font-family: Verdana;
 	font-size: 9pt;
 	text-decoration: none;
+	line-height: 9pt;
 
 	display: block;
+}
 
-	background-image: url(images/top-separator.png);
-	background-repeat: repeat-x;
+ul.portlet-node-list:first-child {
+	background-image: none;
+}
+
+ul.portlet-node-list:first-child h3 {
+	padding-top: 0px;
+	background-image: none;
+}
+
+ul.portlet-node-list {
+	margin: 0px 0px 0px 0px;
+}
+
+ul.portlet-node-list li {
+	list-style: none;
+	list-style-type: none;
+	list-style-image: none;
+}
+
+li.portlet-node-element {
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+
+ul.portlet-node-list h3 {
+	margin: 0px;
+	padding: 0px;
+	padding-top: 5px;
+	font-size: 11pt;
+	font-weight: normal;
+}
+
+ul.portlet-node-list a.portlet-node-title {
+	color: #005a26;
+	font-family: Verdana;
+	text-decoration: none;
+}
+
+ul.portlet-node-list p {
+	margin-top: 0px;
+	margin-bottom: 0px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+	font-size: 10pt;
+	text-align: justify;
+}
+
+ul.portlet-node-list span.portlet-node-date {
+	color: #96969a;
+	font-size: 8pt;
+}
+
+ul.portlet-node-list span.portlet-node-author {
+	color: #96969a;
+	font-size: 8pt;
+	font-weight: bold;
+}
+
+li.portlet-node-separator {
+
+	border: 0px;
+	margin: 0px;
+	padding: 0px;
+	padding-right: 17px;
+
+	height: 12px;
+
+	background-image: url(images/separator.png);
+	background-repeat: no-repeat;
 	background-position: right top;
 }
 
+ul.zhr-menu > li.portlet-node-separator {
+	border: 0px;
+	margin: 0px;
+	padding: 0px;
+	padding-right: 6px;
+
+	height: 6px;
+
+	background-image: url(images/separator-6px.png);
+
+	font-size: 1px;
+	line-height: 1px;
+}
+
+div.portlet-node-separator-fill {
+
+	border: 0px;
+	margin: 0px;
+	padding: 0px;
+
+	line-height: 1px;
+	font-size: 1px;
+
+	background-image: url(images/top-separator.png);
+	background-repeat: repeat-x;
+	background-position: top left;
+}
 
 
 .ui-sortable-placeholder { border: 0px dashed #6e8620; visibility: visible !important; }

@@ -17,22 +17,25 @@ function portlet_taxonomy_count($pid) {
 
 function portlet_taxonomy_content($tid, $count) {
   $i = 0;
-  $output = '<ul class="portlet-node-list">';
+	$output = '';
   $tids = array($tid);
   $result = taxonomy_select_nodes($tids);
+  $output .= '<ul class="portlet-node-list">';
   while (($node = db_fetch_object($result)) AND ($i < $count)) {
-    $node = node_build_content(node_load($node->nid));
-    $output .= '<li>';
-    $output .= '<a href="'.url('node/'.$node->nid).'" class="portlet-node-title"><h4>'.$node->title.'</h4></a>';
-    $output .= '<p>';
+		$node = node_build_content(node_load($node->nid));
+		if ($i > 0) { $output .= '<li class="portlet-node-separator"><div class="portlet-node-separator-fill">&nbsp;</div></li>'; }
+		$output .= '<li class="portlet-node-element">';
+    $output .= '<a href="'.url('node/'.$node->nid).'" class="portlet-node-title"><h3>'.$node->title.'</h3></a>';
+		$output .= '<span class="portlet-node-date">'.date('d/m/Y' ,$node->revision_timestamp).' -</span> <span class="portlet-node-author">'.$node->name.'</span>';
     if ($node->thumbnail) {
       $output .= theme('image', $node->thumbnail, $node->thumbnail, $node->thumbnail);
-    }
-    $output .strip_tags($node->teaser).'</p>';
-    $output .= '</li>';
+		}
+		$content = (empty($node->teaser)) ? $node->body['#content'] : $node->teaser;
+    $output .= '<p>'. $content.'</p>';
     $i++;
+		$output .= '</li>';
   }
-  $output .= '</ul>';
+	$output .= '</ul>';
   return $output;
 }
 

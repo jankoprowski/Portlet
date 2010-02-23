@@ -1,5 +1,5 @@
 <div id="portlet-categories-menu">
-<?php  echo drupal_get_form('portlet_setup'); ?>
+<?php  echo drupal_get_form('portlet_setup', $cookieid); ?>
 </div>
 
 <div id="portlet-link-menu">

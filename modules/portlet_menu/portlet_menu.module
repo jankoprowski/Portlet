@@ -13,8 +13,17 @@ function portlet_menu_options() {
 function theme_portlet_menu($pid, $title, $name, $count, $state, $countable) {
   $menu = menu_load($name);
   // For now we use portlet title instead menu title
-  // $title = $menu['title'];
-  $content = menu_tree($name);
+  $elements = menu_tree_all_data($name);
+	$content = '<ul class="zhr-menu">';
+	$i = 0;
+	foreach ($elements as $element) {
+		if (check_plain($element['link']['title'])) {
+			if ($i > 0) { $content .= '<li class="portlet-node-separator"><div class="portlet-node-separator-fill">&nbsp;</div></li>'; }
+			$content .= '<li><a href="'.check_plain($element['link']['link_path']).'">'. check_plain($element['link']['title']).'</a></li>';
+			++$i;
+		}
+	}
+	$content .= '</ul>';
   return theme('portlet', $pid, $title, $content, $state, $countable, 'menu', $count);
 }
 

@@ -111,14 +111,14 @@ Drupal.behaviors.portlet = function (context) {
   // Service +/- links by ajax
   $('a.portlet-countup').click(function () {
     var url = $(this).attr('href');
-    var bar = $(this).parent();
+    var bar = $(this).parent().parent();
     var content = $(bar).next();
 
     $.getJSON(url + '/ajax', function(data) {
-      $(bar).children('.portlet-countdown').attr('href', data.countdown);
-      $(bar).children('.portlet-countup').attr('href', data.countup);
+      $(bar).children('.portlet-panel-icons').children('.portlet-countdown').attr('href', data.countdown);
+      $(bar).children('.portlet-panel-icons').children('.portlet-countup').attr('href', data.countup);
       var cid = $(content).attr('id'); 
-      $(content).html(data.content);
+      $(content).children().children().html(data.content);
     });
 
     return false;
@@ -126,13 +126,13 @@ Drupal.behaviors.portlet = function (context) {
 
   $('a.portlet-countdown').click(function () {
     var url = $(this).attr('href');
-    var bar = $(this).parent();
+    var bar = $(this).parent().parent();
     var content = $(bar).next();
 
     $.getJSON(url + '/ajax', function(data) {
-      $(bar).children('.portlet-countdown').attr('href', data.countdown);
-      $(bar).children('.portlet-countup').attr('href', data.countup);
-      $(content).html(data.content);
+      $(bar).children('.portlet-panel-icons').children('.portlet-countdown').attr('href', data.countdown);
+      $(bar).children('.portlet-panel-icons').children('.portlet-countup').attr('href', data.countup);
+      $(content).children().children().html(data.content);
     });
 
     return false;
@@ -168,13 +168,5 @@ Drupal.behaviors.portlet = function (context) {
     // think about it
     start: startMovingPanel,
     stop: stopMovingPanel,
-  });
-
-  //Make accordion nodes in panels
-  $('ul.portlet-node-list').accordion({
-    headerSelector: 'a.portlet-node-title',
-    event: 'mouseover',
-    autoHeight: false,
-    clearStyle: true
   });
 };

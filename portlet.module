@@ -8,13 +8,13 @@ function portlet_help($path, $arg) {
 /**
  * Return form to setup portlets on main page
  */
-function portlet_setup($form_state) {
+function portlet_setup($form_state, $cookieid) {
   $form = array();
   $form['categories'] = array(
       '#tree' => TRUE
   );
 
-  $portlets = portlet_get_tree();
+  $portlets = portlet_get_tree(0, $cookieid);
   foreach ($portlets as $portlet) {
     // Add not empty categories as fieldset
     if ($portlet->type == 'root' AND ! empty($portlet->children)) {
@@ -86,35 +86,29 @@ function portlet_perm() {
  */
 function theme_portlet($pid, $title, $content, $state, $countable, $type, $count) {
 	$content_classes = ($state == 'minimized') ? 'portlet-invisible' : 'portlet-visible';
-	$content_classes .= (! empty($title)) ? ' portlet-panel-content-edge' : '';
-	$header_classes = (! empty($title)) ? 'portlet-panel-titled' : '';
 
-  $output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js '.$header_classes.'">';
-  $output .= '<div id="portlet-'.$pid.'-bar" class="portlet-panel-header portlet-handler-js">';
-		$output .= '<div class="portlet-panel-title"><a href="'.url('taxonomy/term/'.$pid).'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a></div>';
-		// @think - how make available + or - depending on count of available elements
-		$output .= '<div class="portlet-panel-icons">';
-			if ($countable) {
-				$output .= '&nbsp;';
-				$output .= '<a class="portlet-countup portlet-option-element-js" href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count + 1)).'"> '.theme('image',  drupal_get_path('module', 'portlet') . 'images/button_plus.png') .' </a>';
-				$output .= '&nbsp;';
-				$output .= '<a class="portlet-countdown portlet-option-element-js"  href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count - 1)).'"> '.theme('image',  drupal_get_path('module', 'portlet') . 'images/button_minus.png') .' </a>';
-				$output .= '&nbsp;';
-			}
-			// @fixit: switch to constants (numerical values)
-			list($action, $icon) = ($state == 'minimized') ? array('maximize', 'M') : array('minimize', 'm');
-			$output .= '&nbsp;';
-			$output .= '<a class="portlet-resize portlet-option-element-js"  href="'.url('portlet/'.$action.'/'.$pid).'">'. theme('image', drupal_get_path('module', 'portlet') . '/images/button_minimize.png') .'</a>';
-			$output .= '&nbsp;';
-			$output .= '<a class="portlet-close portlet-option-element-js"  href="'.url('portlet/remove/'.$pid).'">'. theme('image', drupal_get_path('module', 'portlet') . '/images/button_close.png') .'</a>';
-		$output .= '</div>';
-	$output .= '</div>';
-  $output .= '<div id="portlet-'.$pid.'-content" class="portlet-panel-content '.$content_classes.'">'. $content .'</div>';
-	if ($title) {
-		$output .= '<div class="portlet-panel-bottom"><div class="portlet-panel-bottom-left">&nbsp;</div><div class="portlet-panel-bottom-fill">&nbsp;</div></div>';
+	$output = '<div id="portlet-'.$pid.'" class="portlet-panel portlet-panel-js portlet-panel-titled">';
+	$output .= '<div id="portlet-'.$pid.'-bar" class="portlet-panel-header portlet-handler-js">';
+	$output .= '<div class="portlet-panel-title"><a href="'.url('taxonomy/term/'.$pid).'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a></div>';
+	// @think - how make available + or - depending on count of available elements
+	$output .= '<div class="portlet-panel-icons">';
+	if ($countable) {
+		$output .= '<a class="portlet-countup portlet-option-element-js" href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count + 1)).'"> '.theme('image',  drupal_get_path('module', 'portlet') . '/images/button_plus.png') .' </a>';
+		$output .= '<a class="portlet-countdown portlet-option-element-js"  href="'.url('portlet/update/'.$type.'/'.$pid.'/'.(int)($count - 1)).'"> '.theme('image',  drupal_get_path('module', 'portlet') . '/images/button_minus.png') .' </a>';
 	}
+	// @fixit: switch to constants (numerical values)
+	list($action, $icon) = ($state == 'minimized') ? array('maximize', 'M') : array('minimize', 'm');
+	$output .= '&nbsp;';
+	$output .= '<a class="portlet-resize portlet-option-element-js"  href="'.url('portlet/'.$action.'/'.$pid).'">'. theme('image', drupal_get_path('module', 'portlet') . '/images/button_minimize.png') .'</a>';
+	$output .= '&nbsp;';
+	$output .= '<a class="portlet-close portlet-option-element-js"  href="'.url('portlet/remove/'.$pid).'">'. theme('image', drupal_get_path('module', 'portlet') . '/images/button_close.png') .'</a>';
 	$output .= '</div>';
-  return $output;
+	$output .= '</div>';
+	// @simplify for all portlets without edge
+	$output .= '<div id="portlet-'.$pid.'-content" class="portlet-panel-content portlet-panel-content-edge '.$content_classes.'"><div class="portlet-panel-content-right"><div class="portlet-panel-content-inner">'. $content .'</div></div></div>';
+	$output .= '<div class="portlet-panel-bottom"><div class="portlet-panel-bottom-left">&nbsp;</div><div class="portlet-panel-bottom-fill">&nbsp;</div></div>';
+	$output .= '</div>';
+	return $output;
 }
 
 function theme_portlet_empty($pid, $title, $content, $state, $countable, $type, $count) {
@@ -205,7 +199,7 @@ function portlet_reset() {
   portlet_clear();
   portlet_load_default_configuration();
   drupal_set_message('Ustawienia paneli zostaly zresetowane do wartolci domyslnych');
-  header('Location: '. url('portlet'));
+	drupal_goto('/portlet');
 }
 
 /**
@@ -218,11 +212,10 @@ function portlet_load($pid) {
 /**
  * Return default configuration of panels
  */
-function portlet_load_default_configuration() {
+function portlet_load_default_configuration($cookieid = NULL) {
   global $user;
 
-  $columns = array();
-  $portlets = portlet_get_all();
+	$cookieid = ($_COOKIE['cid']) ? $_COOKIE['cid'] : $cookieid;
 
   $args = array();
   $default = variable_get('portlet_default', array());
@@ -235,12 +228,23 @@ function portlet_load_default_configuration() {
         db_query('INSERT INTO {portlet_users} (oid, pid, _column, count, state, _order) VALUES (%d, %d, "%s", 5, "maximized", %d)', 
           $user->uid, $pid, $column, $i);
       } else {
-        db_query('INSERT INTO {portlet_guests} (oid, pid, _column, count, state, _order) VALUES ("%s", %d, "%s", 5, "maximized", %d)', $_COOKIE['cid'], $pid, $column, $i);
-      }
-      $columns[$column] = array_merge($columns[$column], array($portlets[$pid]));
+        db_query('INSERT INTO {portlet_guests} (oid, pid, _column, count, state, _order) VALUES ("%s", %d, "%s", 5, "maximized", %d)', $cookieid, $pid, $column, $i);
+			}
       $i++;
     }
   }
+
+	// Only after inserting data to database
+	// we can get all portlets
+	// issue is caused that LEFT JOIN doesn't return all data when portley_guest
+	// don't contain user identificator
+  $columns = array();
+	$portlets = portlet_get_all(NULL, $cookieid);
+	foreach ($default as $column => $_portlets) {
+		foreach ($_portlets as $pid) {
+			$columns[$column] = array_merge((array)$columns[$column], array($portlets[$pid]));
+		}
+	}
 
   return $columns;
 }
@@ -251,10 +255,11 @@ function portlet_load_default_configuration() {
  *   for which portlets should be ordered
  * @return array of portlets
  */
-function portlet_get_all($order = NULL) {
+function portlet_get_all($order = NULL, $cookieid = NULL) {
   static $portlets;
   global $user;
 
+	$cookieid = ($_COOKIE['cid']) ? $_COOKIE['cid'] : $cookieid;
   if ($order) {
     $order = 'ORDER BY '.$order.' DESC';
   }
@@ -265,7 +270,7 @@ function portlet_get_all($order = NULL) {
             p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
           FROM
             {portlet_config} AS p
-          LEFT OUTER JOIN
+          LEFT JOIN
             {portlet_users} AS c
           ON
             p.pid = c.pid
@@ -274,23 +279,35 @@ function portlet_get_all($order = NULL) {
           '.$order,
         $user->uid);
     } else {
-        $result = db_query('SELECT
-            p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
-          FROM
-            {portlet_config} AS p
-          LEFT OUTER JOIN
-            {portlet_guests} AS c
-          ON
-            p.pid = c.pid
-          WHERE
-            (c.oid="%s" OR c.pid IS NULL)
-          '.$order,
-        $_COOKIE['cid']);
+				$result = db_query('SELECT
+						p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
+					FROM
+						{portlet_config} AS p
+					LEFT JOIN
+						{portlet_guests} AS c
+					ON
+						p.pid = c.pid
+					WHERE
+						(c.oid="%s" OR c.pid IS NULL)
+					'.$order,
+					$cookieid);
+				/*echo 'SELECT
+						p.pid, p.title, p.parent, p.type, p.arg, p.countable, c.state, c._column as `column`, c.count
+					FROM
+						{portlet_config} AS p
+					LEFT JOIN
+						{portlet_guests} AS c
+					ON
+						p.pid = c.pid
+					WHERE
+						(c.oid="'.$cookieid.'" OR c.pid IS NULL)
+						'.$order;*/
+					
     }
     while ($portlet = db_fetch_object($result)) {
       $portlets[$order][$portlet->pid] = $portlet;
     }
-  }
+	}
   return $portlets[$order];
 }
 
@@ -300,12 +317,13 @@ function portlet_get_all($order = NULL) {
  * @param int parent of portlets to return
  * @return array been portlets tree
  */
-function portlet_get_tree($parent = 0) {
+function portlet_get_tree($parent = 0, $cookieid = NULL) {
   static $children, $parents;
   global $user;
 
   // @fixit hmac instead two table
-  $portlets = portlet_get_all('p.weight, p.title');
+	$cookieid = ($_COOKIE['cid']) ? $_COOKIE['cid'] : $cookieid;
+  $portlets = portlet_get_all('p.weight, p.title', $cookieid);
   if (! isset($children)) {
     $children = array();
     foreach ($portlets as $portlet) {
@@ -321,10 +339,11 @@ function portlet_get_tree($parent = 0) {
       $portlet->children = $children[$child];
       $tree[] = $portlet;
       if (! empty($children[$child])) {
-        $tree = array_merge($tree, portlet_get_tree($child));
+        $tree = array_merge($tree, portlet_get_tree($child, $cookieid));
       }
     }
   }
+
   return $tree;
 }
 
@@ -333,9 +352,9 @@ function portlet_get_tree($parent = 0) {
  *
  * @return array Portlets in user defined order
  */
-function portlet_get_columns() {
+function portlet_get_columns($cookieid = NULL) {
   $columns = array();
-  $portlets = portlet_get_all('c._column, c._order');
+  $portlets = portlet_get_all('c._column, c._order', $cookieid);
   foreach ($portlets as $portlet) {
     if ($portlet->column) {
       $columns[$portlet->column][] = $portlet;
@@ -348,28 +367,33 @@ function portlet_get_columns() {
  * Set cookie of fluid panels
  */
 function portlet_set_cookie() {
-  setcookie('cid', isset($_COOKIE['cid']) ? $_COOKIE['cid'] : uniqid('mx', TRUE), time() + 3600 * 24 * 7 * 4 * 6 , '/');
-  db_query('UPDATE {portlet_guests} SET period=NOW() WHERE oid="%s";', $_COOKIE['cid']);
+	$cookieid = (isset($_COOKIE['cid']) && $_COOKIE['cid']) ? $_COOKIE['cid'] : uniqid('mx', TRUE);
+  setcookie('cid',$cookieid, time() + 3600 * 24 * 7 * 4 * 6 * 50, '/'); // 23 years expire date
+	db_query('UPDATE {portlet_guests} SET period=NOW() WHERE oid="%s";', $_COOKIE['cid']);
+	return $cookieid;
 }
 
 /**
  * Return main site - view of the panels.
+ * $new_cookieid is passed to default_config
+ * to fill database with new proper value
+ * when cookie is fresh
  */
 function portlet() {
   global $user;
 
-  if (! $user->uid) { portlet_set_cookie(); }
+	$new_cookieid = NULL;
+	if (! $user->uid) { $new_cookieid = portlet_set_cookie(); }
 
   drupal_add_css(drupal_get_path('module', 'portlet') . '/portlet.css');
   jquery_ui_add('ui.sortable');
-  jquery_ui_add('ui.accordion');
   drupal_add_js(drupal_get_path('module', 'portlet') .'/portlet.js');
 
 
-  $columns = portlet_get_columns();
-  if (empty($columns) AND ! $user->uid) { $columns = portlet_load_default_configuration();}
+  $columns = portlet_get_columns($new_cookieid);
+	if (empty($columns) AND ! $user->uid) { $columns = portlet_load_default_configuration($new_cookieid); }
 
-  return theme('portlet_page', $columns);
+  return theme('portlet_page', $columns, $new_cookieid);
 }
 
 /**
@@ -403,7 +427,7 @@ function portlet_update_page($type, $pid, $count) {
   if (! $result) {
     drupal_access_denied();
   }
-  header('Location: '. url('portlet'));
+  drupal_goto('/portlet');
 }
 
 /**
@@ -470,7 +494,7 @@ function portlet_minimize($pid) {
   if (! $result) {
     drupal_access_denied();
   }
-  header('Location: '. url('portlet'));
+  drupal_goto('/portlet');
 }
 
 function portlet_minimize_ajax($pid) {
@@ -517,7 +541,7 @@ function portlet_maximize($pid) {
   if (! $result) {
     drupal_access_denied();
   }
-  header('Location: '. url('portlet'));
+  drupal_goto('/portlet');
 }
 
 function portlet_maximize_ajax($pid) {
@@ -570,7 +594,7 @@ function portlet_delete($pid) {
   if (! $result) {
     drupal_access_denied();
   }
-  header('Location: '. url('portlet'));
+  drupal_goto('/portlet');
 }
 
 
@@ -600,7 +624,7 @@ function portlet_delete_ajax($pid) {
  */
 function portlet_menu() {
   $items['portlet'] = array(
-    'title' => 'Strona glowna',
+    'title' => '', // No title on mainpage - only portlets
     'page callback' => 'portlet',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK
@@ -716,7 +740,7 @@ function portlet_theme() {
     'arguments' => array()
   );
   $items['portlet_page'] = array(
-    'arguments' => array('columns' => NULL),
+    'arguments' => array('columns' => NULL, 'cookieid' => NULL),
     'template' => 'portlet'
   );
   $items['portlet_admin'] = array(
